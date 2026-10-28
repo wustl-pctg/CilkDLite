@@ -1,0 +1,36 @@
+# All supported builds write outside this source tree, under ../../build.
+/build/
+/lib/
+/runtime/build/
+
+# Legacy compiler output and research results must not enter source snapshots.
+*.o
+*.a
+*.so
+*.so.*
+*.d
+*.bc
+*.ll
+*.ll.*
+*.S
+*.A
+*.debug
+*.log
+*.syms
+*.dot
+*.outputfile
+*.csv
+*.png
+*.svg
+core
+core.*
+**/figures/
+**/__pycache__/
+*.pyc
+
+# Editors and local configuration backups.
+*~
+\#*#
+*.swp
+*.swo
+*.bak

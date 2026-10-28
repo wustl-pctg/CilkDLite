@@ -1,0 +1,168 @@
+set(CHEETAH_LIB_CMAKEFILES_DIR "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}"  PARENT_SCOPE)
+
+# Get sources
+set(CHEETAH_SOURCES
+  c_reducers.c
+  cilk2c.c
+  cilk2c_inlined.c
+  cilkred_map.c
+  debug.c
+  fiber.c
+  fiber-pool.c
+  global.c
+  init.c
+  internal-malloc.c
+  personality.c
+  reducer_impl.c
+  sched_stats.c
+  scheduler.c
+)
+
+# We assume there is just one source file to compile for the cheetah
+# ABI.
+set(CHEETAH_ABI_SOURCE
+  cilk2c_inlined.c
+)
+
+set(CHEETAH_PEDIGREE_GLOBALS_SOURCES
+  pedigree_globals.c
+)
+
+set(CHEETAH_PERSONALITY_C_SOURCES
+  personality-c.c
+)
+
+set(CHEETAH_PERSONALITY_CPP_SOURCES
+  personality-cpp.c
+)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# Add dependent libraries
+append_list_if(CHEETAH_HAS_PTHREAD_LIB pthread CHEETAH_COMMON_LIBS)
+append_list_if(CHEETAH_HAS_DL_LIB dl CHEETAH_COMMON_LIBS)
+if (CHEETAH_USE_COMPILER_RT)
+  find_compiler_rt_library(builtins CHEETAH_BUILTINS_LIBRARY)
+  append_list_if(CHEETAH_BUILTINS_LIBRARY "${CHEETAH_BUILTINS_LIBRARY}" CHEETAH_COMMON_LIBS)
+else()
+  append_list_if(CHEETAH_HAS_GCC_S_LIB gcc_s CHEETAH_COMMON_LIBS)
+endif()
+
+set(CHEETAH_DYNAMIC_LIBS ${CHEETAH_COMMON_LIBS})
+
+add_flags_if_supported(-g3)
+add_flags_if_supported(-Wno-covered-switch-default)
+if (CHEETAH_HAS_FOMIT_FRAME_POINTER_FLAG)
+  set_source_files_properties(invoke-main.c PROPERTIES COMPILE_FLAGS -fno-omit-frame-pointer)
+endif()
+
+# Add definitions for cheetah build
+list(APPEND CHEETAH_COMPILE_DEFS OPENCILK_LIBRARY)
+
+# Set optimization levels for Debug and Release builds
+set(CHEETAH_DEBUG_OPTIONS -Og)
+set(CHEETAH_RELEASE_OPTIONS -O3)
+
+# Setup flags and defs for cheetah bitcode ABI build
+set(CHEETAH_BITCODE_ABI_COMPILE_FLAGS ${CHEETAH_COMPILE_FLAGS} -emit-llvm)
+set(CHEETAH_BITCODE_ABI_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS}
+  "CHEETAH_API="
+  "CHEETAH_INTERNAL="
+  "CHEETAH_INTERNAL_NORETURN=__attribute__((noreturn))"
+  "CILK_DEBUG=0")
+set(CHEETAH_BITCODE_PEDIGREE_ABI_COMPILE_DEFS ${CHEETAH_BITCODE_ABI_COMPILE_DEFS}
+  "ENABLE_CILKRTS_PEDIGREE=1")
+
+# Set compile flags, compile defs, and link flags for ASan build
+set(CHEETAH_ASAN_COMPILE_FLAGS ${CHEETAH_COMPILE_FLAGS})
+set(CHEETAH_ASAN_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS} "CILK_ENABLE_ASAN_HOOKS=1")
+set(CHEETAH_ASAN_LINK_FLAGS ${CHEETAH_LINK_FLAGS} -fsanitize=address)
+set(CHEETAH_BITCODE_ABI_ASAN_COMPILE_FLAGS ${CHEETAH_BITCODE_ABI_COMPILE_FLAGS})
+set(CHEETAH_BITCODE_ABI_ASAN_COMPILE_DEFS ${CHEETAH_BITCODE_ABI_COMPILE_DEFS}
+  "CILK_ENABLE_ASAN_HOOKS=1")
+set(CHEETAH_BITCODE_PEDIGREE_ABI_ASAN_COMPILE_DEFS
+  ${CHEETAH_BITCODE_PEDIGREE_ABI_COMPILE_DEFS}
+  "CILK_ENABLE_ASAN_HOOKS=1")
+
+set(CHEETAH_BUILD_ASAN_VER OFF)
+if (CHEETAH_ENABLE_ASAN AND (CHEETAH_HAS_ASAN OR TARGET asan))
+  set(CHEETAH_BUILD_ASAN_VER ON)
+endif()
+
+# Add compile flags for Cheetah-runtime compilation that should be
+# excluded from bitcode compilation
+if (CHEETAH_HAS_MAVX_FLAG)
+  list(APPEND CHEETAH_COMPILE_FLAGS -mavx)
+endif()
+
+if (APPLE)
+  add_cheetah_bitcode(opencilk-abi
+    OS ${CHEETAH_SUPPORTED_OS}
+    ARCHS ${CHEETAH_SUPPORTED_ARCH}
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/${CHEETAH_ABI_SOURCE}
+    CFLAGS ${CHEETAH_BITCODE_ABI_COMPILE_FLAGS}
+    DEFS ${CHEETAH_BITCODE_ABI_COMPILE_DEFS}
+    PARENT_TARGET cheetah)
+
+  if (CHEETAH_ENABLE_SHARED)
+    add_cheetah_runtime(opencilk
+      SHARED
+      OS ${CHEETAH_SUPPORTED_OS}
+      ARCHS ${CHEETAH_SUPPORTED_ARCH}
+      SOURCES ${CHEETAH_SOURCES}
+      CFLAGS ${CHEETAH_COMPILE_FLAGS}
+      LINK_FLAGS ${CHEETAH_LINK_FLAGS}
+      LINK_LIBS ${CHEETAH_DYNAMIC_LIBS}
+      DEFS ${CHEETAH_COMPILE_DEFS}
+      VERSION "${CHEETAH_ABI_VERSION}.0"
+      SOVERSION ${CHEETAH_ABI_VERSION}
+      PARENT_TARGET cheetah)
+
+  endif()
+  if (CHEETAH_ENABLE_STATIC)
+    add_cheetah_runtime(opencilk
+      STATIC
+      OS ${CHEETAH_SUPPORTED_OS}
+      ARCHS ${CHEETAH_SUPPORTED_ARCH}
+      SOURCES ${CHEETAH_SOURCES}
+      CFLAGS ${CHEETAH_COMPILE_FLAGS}
+      LINK_FLAGS ${CHEETAH_LINK_FLAGS}
+      LINK_LIBS ${CHEETAH_COMMON_LIBS}
+      DEFS ${CHEETAH_COMPILE_DEFS}
+      PARENT_TARGET cheetah)
+  endif()
+else() # Not APPLE
+  foreach (arch ${CHEETAH_SUPPORTED_ARCH})
+    add_cheetah_bitcode(opencilk-abi
+      ARCHS ${arch}
+      SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/${CHEETAH_ABI_SOURCE}
+      CFLAGS ${CHEETAH_BITCODE_ABI_COMPILE_FLAGS}
+      DEFS ${CHEETAH_BITCODE_ABI_COMPILE_DEFS}
+      PARENT_TARGET cheetah)
+
+    if (CHEETAH_ENABLE_SHARED)
+      add_cheetah_runtime(opencilk
+	SHARED
+	ARCHS ${arch}
+	SOURCES ${CHEETAH_SOURCES}
+	CFLAGS ${CHEETAH_COMPILE_FLAGS}
+	LINK_FLAGS ${CHEETAH_LINK_FLAGS}
+	LINK_LIBS ${CHEETAH_DYNAMIC_LIBS}
+	DEFS ${CHEETAH_COMPILE_DEFS}
+	VERSION "${CHEETAH_ABI_VERSION}.0"
+	SOVERSION ${CHEETAH_ABI_VERSION}
+	PARENT_TARGET cheetah)
+    endif()
+    if (CHEETAH_ENABLE_STATIC)
+      add_cheetah_runtime(opencilk
+	STATIC
+	ARCHS ${arch}
+	SOURCES ${CHEETAH_SOURCES}
+	CFLAGS ${CHEETAH_COMPILE_FLAGS}
+	LINK_FLAGS ${CHEETAH_LINK_FLAGS}
+	LINK_LIBS ${CHEETAH_COMMON_LIBS}
+	DEFS ${CHEETAH_COMPILE_DEFS}
+	PARENT_TARGET cheetah)
+    endif()
+  endforeach()
+endif()

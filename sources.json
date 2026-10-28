@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "description": "Selected source trees, without upstream Git history. Local release changes are included in the exported file checksums.",
+  "repositories": [
+    {"path": ".", "name": "opencilk-backtracking-docker", "branch": "main", "commit": "e887d9d38c7a51f4b4e13f9ae7c06357d04c478b"},
+    {"path": "src/opencilk", "name": "opencilk-backtracking", "branch": "dev/18.x", "commit": "b033d1d68369d78f8e472a596c9cb078a6bbadcd"},
+    {"path": "src/cheetah", "name": "opencilk-backtracking-cheetah", "branch": "master", "commit": "7f31758db84eae667d6b1340845c15546b89585b"},
+    {"path": "src/cilktools", "name": "OpenCilk/productivity-tools", "commit": "fc0af2000b7911fa1d8282ef7f910621c66e0921", "url": "https://github.com/OpenCilk/productivity-tools"},
+    {"path": "src/parlaylib", "name": "cmuparlay/parlaylib", "commit": "e1f1dc0ccf930492a2723f7fbef8510d35bf57f5", "url": "https://github.com/cmuparlay/parlaylib", "patches": ["patches/parlay-opencilk.patch"]},
+    {"path": "src/gperftools", "name": "gperftools/gperftools", "commit": "ab499855dc9477834ca88cae585befb8fa15fe95", "url": "https://github.com/gperftools/gperftools"}
+  ],
+  "downloads": [
+    {"name": "glibc", "version": "2.35", "url": "https://ftp.gnu.org/gnu/libc/glibc-2.35.tar.gz", "sha256": "3e8e0c6195da8dfbd31d77c56fb8d99576fb855fafd47a9e0a895e51fd5942d4"},
+    {"name": "gcc", "version": "13.2.0", "url": "https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz", "sha512": "d99e4826a70db04504467e349e9fbaedaa5870766cda7c5cab50cdebedc4be755ebca5b789e1232a34a20be1a0b60097de9280efe47bdb71c73251e30b0862a2"}
+  ]
+}

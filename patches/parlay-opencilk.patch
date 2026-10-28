@@ -1,0 +1,10 @@
+--- a/include/parlay/internal/scheduler_plugins/opencilk.h
++++ b/include/parlay/internal/scheduler_plugins/opencilk.h
+@@ -4,6 +4,7 @@
+ #include <cstddef>
+ 
+ #include <type_traits>
++#include <utility>
+ 
+ #include <cilk/cilk.h>
+ #include <cilk/cilk_api.h>
